@@ -52,6 +52,10 @@
     "entry": ["src", "!src/**/__tests__/**", "!src/**/*.test.*"],
     "splitting": false,
     "sourcemap": true,
-    "clean": true
+    "clean": true,
+    "loader": {
+      ".wasm": "file",
+      ".zkey": "file"
+    }
   }
 }
