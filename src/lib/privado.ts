@@ -55,15 +55,6 @@ export const CIRCUITS_FOLDER = "circuits";
 export const RHS_URL = "https://rhs-staging.polygonid.me";
 export const SEED = "0xDaDC3e4Fa2CF41BC4ea0aD0e627935A5c2DB433d"; // THIS SEED MUST NOT CHANGE
 export const MEMORY_KEYSTORE_COLLECTION_NAME = "memory-keystore";
-// export const DEFAULT_IDENTITY_CREATION_OPTIONS: IdentityCreationOptions = {
-//   method: core.DidMethod.LiskId,
-//   blockchain: core.Blockchain.Lisk,
-//   networkId: core.NetworkId.LiskSepolia,
-//   revocationOpts: {
-//     type: CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
-//     id: RHS_URL,
-//   },
-// };
 export const DEFAULT_IDENTITY_CREATION_OPTIONS: IdentityCreationOptions = {
   method: core.DidMethod.PolygonId,
   blockchain: core.Blockchain.Polygon,
@@ -166,15 +157,6 @@ export const initializeDataStorageAndWallets = async (config: {
   const credentialWallet = await initializeCredentialWallet(dataStorage);
   const memoryKeyStore = new MongoDBPrivateKeyStore(config.database, MEMORY_KEYSTORE_COLLECTION_NAME);
   const identityWallet = await initializeIdentityWallet(dataStorage, memoryKeyStore, credentialWallet);
-
-  // core.registerDidMethodNetwork({
-  //   chainId: 4202,
-  //   method: 'LiskId',
-  //   blockchain: 'Lisk',
-  //   network: 'LiskSepolia',
-  //   methodByte: 0b1011_0001,
-  //   networkFlag: 0b01000001 | 0b00100001,
-  // });
 
   return {
     dataStorage,
@@ -299,7 +281,10 @@ export const issueCredentialAndTransitState = async (config: {
   console.log("=============== user did ===============");
   console.log(config.credential.userDID.string());
 
-  const { did: issuerDID, credential: issuerCredential } = await initializeIssuer(identityWallet, config.options.database);
+  const { did: issuerDID, credential: issuerCredential } = await initializeIssuer(
+    identityWallet,
+    config.options.database,
+  );
 
   console.log("=============== issuerDID did ===============");
   console.log(issuerDID.string());
@@ -307,28 +292,28 @@ export const issueCredentialAndTransitState = async (config: {
   console.log("=============== issuerDID credentials ===============");
   console.log(JSON.stringify(issuerCredential.toJSON()));
 
-  // console.log("=============== create credential request ===============");
+  console.log("=============== create credential request ===============");
   const credentialRequest = createNationalCardCredential(
     config.credential.userDID,
     config.credential.dob,
     config.credential.nin,
   );
 
-  // console.log("=============== issue credential ===============");
+  console.log("=============== issue credential ===============");
   const credential = await identityWallet.issueCredential(issuerDID, credentialRequest);
   await dataStorage.credential.saveCredential(credential);
 
-  // console.log("================= generate Iden3SparseMerkleTreeProof =======================");
+  console.log("================= generate Iden3SparseMerkleTreeProof =======================");
   const res = await identityWallet.addCredentialsToMerkleTree([credential], issuerDID);
 
-  // console.log("================= push states to rhs ===================");
+  console.log("================= push states to rhs ===================");
   await identityWallet.publishRevocationInfoByCredentialStatusType(
     issuerDID,
     CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
     { rhsUrl: RHS_URL },
   );
 
-  // console.log("================= publish to blockchain ===================");
+  console.log("================= publish to blockchain ===================");
   const ethSigner = new ethers.Wallet(
     config.options.walletPrivateKey,
     (dataStorage.states as EthStateStorage).provider,
@@ -365,11 +350,9 @@ export const generateProof = async (config: {
   console.log(config.credential.userDID.string());
 
   console.log("=============== issuer did ===============");
-  // const { did: issuerDID } = await initializeIssuer(identityWallet, config.options.database);
   const { did: issuerDID, credential: issuerCredential } = await identityWallet.createIdentity({
     ...DEFAULT_IDENTITY_CREATION_OPTIONS,
   });
-
   console.log(issuerDID.string());
 
   console.log("================= generate Iden3SparseMerkleTreeProof =======================");

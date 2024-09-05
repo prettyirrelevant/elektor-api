@@ -16,7 +16,7 @@ import {
 } from "@/lib/privado";
 import { W3CCredential, core } from "@0xpolygonid/js-sdk";
 import type { Db } from "mongodb";
-import { generateNIN, generateRandomDob, initialiseDatabase, now } from "./helpers";
+import { generateNIN, generateRandomDob, initialiseDatabase, now, vote } from "./helpers";
 
 const logger = pino({ name: "server start" });
 const app: Application = express();
@@ -66,6 +66,7 @@ app.get("/api/identity", async (req, res, next) => {
     res.json({
       did: account.did,
       address: account.address,
+      hasVoted: account.hasVoted,
       createdAt: account.createdAt,
       issuedCredential: account.issuedCredential,
       isDocumentUploaded: account.isDocumentUploaded,
@@ -217,6 +218,43 @@ app.post("/api/generate-proof", async (req, res, next) => {
     });
 
     res.status(200).json({ success: true, message: "Proof successfully generated", data: { proof, pub_signals } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/vote", async (req, res, next) => {
+  try {
+    const { secret, nullifier, contestantId } = req.body;
+    if (!secret || typeof secret !== "string") {
+      return res.status(400).json({ message: "Valid secret is required" });
+    }
+    if (!nullifier || typeof nullifier !== "string") {
+      return res.status(400).json({ message: "Valid nullifier is required" });
+    }
+    if (!contestantId || !Number.isInteger(Number(contestantId)) || Number(contestantId) < 0) {
+      return res.status(400).json({ message: "Valid contestantId is required" });
+    }
+
+    const address = req.address;
+    const accounts = db.collection("accounts");
+    const account = await accounts.findOne({ address });
+    if (!account) {
+      return res.status(404).json({
+        message: "No account found for this address",
+      });
+    }
+
+    if (account.hasVoted) {
+      return res.status(400).json({ message: "You have already voted in this election" });
+    }
+
+    const result = await vote(Number(secret), Number(nullifier), Number(contestantId));
+    await accounts.updateOne({ address }, { $set: { hasVoted: true } });
+    return res.status(200).json({
+      message: "Vote cast successfully",
+      transactionHash: result,
+    });
   } catch (error) {
     next(error);
   }
