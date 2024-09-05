@@ -166,8 +166,12 @@ export const initializeDataStorageAndWallets = async (config: {
 };
 
 export const initializeCircuitStorage = async (): Promise<ICircuitStorage> => {
+  const directory =
+    process.env.NODE_ENV === "development"
+      ? path.join(path.dirname(__dirname), CIRCUITS_FOLDER)
+      : path.join(__dirname, CIRCUITS_FOLDER);
   return new FSCircuitStorage({
-    dirname: path.join(path.dirname(__dirname), CIRCUITS_FOLDER),
+    dirname: directory,
   });
 };
 

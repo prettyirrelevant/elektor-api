@@ -63,7 +63,8 @@
       ".wasm": "copy",
       ".zkey": "copy",
       ".sym": "copy",
-      ".r1cs": "copy"
+      ".r1cs": "copy",
+      ".json": "copy"
     }
   }
 }
