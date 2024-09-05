@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { generate32ByteArrayFromString, initialiseDatabase } from "~/helpers";
-import { DEFAULT_IDENTITY_CREATION_OPTIONS, initializeDataStorageAndWallets, initializeIssuer } from "~/pkg/privado";
+import { generate32ByteArrayFromString, initialiseDatabase } from "@/helpers";
+import { DEFAULT_IDENTITY_CREATION_OPTIONS, initializeDataStorageAndWallets, initializeIssuer } from "@/lib/privado";
 
 async function main() {
   const db = await initialiseDatabase({ databaseUrl: "mongodb://localhost", attemptConnect: true });
