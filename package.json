@@ -60,8 +60,10 @@
     "sourcemap": true,
     "clean": true,
     "loader": {
-      ".wasm": "file",
-      ".zkey": "file"
+      ".wasm": "copy",
+      ".zkey": "copy",
+      ".sym": "copy",
+      ".r1cs": "copy"
     }
   }
 }

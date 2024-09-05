@@ -55,6 +55,7 @@ app.get("/", (req, res) => {
 
 app.get("/api/identity", async (req, res, next) => {
   try {
+    // @ts-ignore
     const address = req.address;
 
     const accounts = db.collection("accounts");
@@ -79,6 +80,7 @@ app.get("/api/identity", async (req, res, next) => {
 
 app.put("/api/identity", async (req, res, next) => {
   try {
+    // @ts-ignore
     const address = req.address;
 
     const accounts = db.collection("accounts");
@@ -123,6 +125,7 @@ app.put("/api/identity", async (req, res, next) => {
 
 app.post("/api/upload-credentials", upload.single("document"), async (req, res, next) => {
   try {
+    // @ts-ignore
     const address = req.address;
     const file = req.file;
     if (!file) {
@@ -194,6 +197,7 @@ app.post("/api/upload-credentials", upload.single("document"), async (req, res, 
 
 app.post("/api/generate-proof", async (req, res, next) => {
   try {
+    // @ts-ignore
     const address = req.address;
 
     const accounts = db.collection("accounts");
@@ -236,6 +240,7 @@ app.post("/api/vote", async (req, res, next) => {
       return res.status(400).json({ message: "Valid contestantId is required" });
     }
 
+    // @ts-ignore
     const address = req.address;
     const accounts = db.collection("accounts");
     const account = await accounts.findOne({ address });

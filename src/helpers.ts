@@ -15,6 +15,7 @@ import {
 } from "ethers";
 import { type Db, MongoClient } from "mongodb";
 import { groth16 } from "snarkjs";
+
 const DATABASE_NAME = "elektor-db";
 
 interface FetchLogsParams {
