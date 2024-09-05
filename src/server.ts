@@ -67,6 +67,7 @@ app.get("/api/identity", async (req, res, next) => {
       did: account.did,
       address: account.address,
       createdAt: account.createdAt,
+      issuedCredential: account.issuedCredential,
       isDocumentUploaded: account.isDocumentUploaded,
       identityCredential: account.identityCredential,
     });
