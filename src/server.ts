@@ -16,7 +16,7 @@ import {
 } from "@/lib/privado";
 import { W3CCredential, core } from "@0xpolygonid/js-sdk";
 import type { Db } from "mongodb";
-import { generateNIN, generateRandomDob, initialiseDatabase, now, vote } from "./helpers";
+import { generateNIN, generateRandomDob, generateRandomEthereumTxId, initialiseDatabase, now, vote } from "./helpers";
 
 const logger = pino({ name: "server start" });
 const app: Application = express();
@@ -149,7 +149,7 @@ app.post("/api/upload-credentials", upload.single("document"), async (req, res, 
     const dob = generateRandomDob();
     const nin = generateNIN();
 
-    const { txId, issuedCredential } = await issueCredentialAndTransitState({
+    const { issuedCredential, txId } = await issueCredentialAndTransitState({
       credential: {
         dob: Number(dob),
         nin,
@@ -187,7 +187,6 @@ app.post("/api/upload-credentials", upload.single("document"), async (req, res, 
       message: "Credentials uploaded and account updated successfully",
       nin,
       dob,
-      txId,
       issuedCredential: issuedCredential.toJSON(),
     });
   } catch (error) {

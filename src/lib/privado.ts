@@ -53,7 +53,7 @@ import type { Db } from "mongodb";
 
 export const CIRCUITS_FOLDER = "circuits";
 export const RHS_URL = "https://rhs-staging.polygonid.me";
-export const SEED = "0xDaDC3e4Fa2CF41BC4ea0aD0e627935A5c2DB433d"; // THIS SEED MUST NOT CHANGE
+export const SEED = "0x0701d6e9C554cB38E2CBCb5b32aFED13cDf70A05"; // THIS SEED MUST NOT CHANGE
 export const MEMORY_KEYSTORE_COLLECTION_NAME = "memory-keystore";
 export const DEFAULT_IDENTITY_CREATION_OPTIONS: IdentityCreationOptions = {
   method: core.DidMethod.PolygonId,
@@ -247,10 +247,10 @@ export const createNationalCardCredentialRequest = (): ZeroKnowledgeProofRequest
       allowedIssuers: ["*"],
       type: "NationalCard",
       context:
-        "https://gist.githubusercontent.com/prettyirrelevant/21ffe2f0402b2d9120b50ee9e9556e25/raw/97cac049de388e0d2f033b777631fbc7ef49582d/NationalCardLD.json",
+        "https://gist.githubusercontent.com/prettyirrelevant/21ffe2f0402b2d9120b50ee9e9556e25/raw/6eecb53a6000e1271614cf06cb5e4a5511b9f5bc/NationalCardLD.json",
       credentialSubject: {
         DOB: {
-          $gt: 20060903,
+          $lt: 20060903,
         },
       },
     },
@@ -317,13 +317,35 @@ export const issueCredentialAndTransitState = async (config: {
     { rhsUrl: RHS_URL },
   );
 
+  console.log("================= checking isOldStateGenesis ===================");
+  const { database } = config.options;
+  const cache = database.collection("cache");
+  const result = await cache.findOne({ key: "isOldStateGenesis" });
+  const isOldStateGenesis = result?.value ? result?.value : true;
+  console.log(isOldStateGenesis);
+
   console.log("================= publish to blockchain ===================");
   const ethSigner = new ethers.Wallet(
     config.options.walletPrivateKey,
     (dataStorage.states as EthStateStorage).provider,
   );
-  const txId = await proofService.transitState(issuerDID, res.oldTreeState, true, dataStorage.states, ethSigner);
+  const txId = await proofService.transitState(
+    issuerDID,
+    res.oldTreeState,
+    isOldStateGenesis,
+    dataStorage.states,
+    ethSigner,
+  );
   console.log("Transaction ID: ", txId);
+  await cache.updateOne(
+    { key: "isOldStateGenesis" },
+    {
+      $set: {
+        value: false,
+      },
+    },
+  );
+
   return { txId, issuedCredential: credential };
 };
 
@@ -354,26 +376,33 @@ export const generateProof = async (config: {
   console.log(config.credential.userDID.string());
 
   console.log("=============== issuer did ===============");
-  const { did: issuerDID, credential: issuerCredential } = await identityWallet.createIdentity({
-    ...DEFAULT_IDENTITY_CREATION_OPTIONS,
-  });
+  const { did: issuerDID } = await initializeIssuer(identityWallet, config.options.database);
   console.log(issuerDID.string());
 
   console.log("================= generate Iden3SparseMerkleTreeProof =======================");
-  const res = await identityWallet.addCredentialsToMerkleTree([config.credential.issuedCredential], issuerDID);
+  const credentials = await credentialWallet.findByQuery({
+    type: "NationalCard",
+    credentialSubject: {
+      type: {
+        $eq: "NationalCard",
+      },
+    },
+  });
 
+  console.log("================= generate Iden3SparseMerkleTreeProofer =======================");
   const credsWithIden3MTPProof = await identityWallet.generateIden3SparseMerkleTreeProof(
     issuerDID,
-    res.credentials,
+    credentials,
     config.credential.txId,
   );
 
-  console.log(credsWithIden3MTPProof);
   await credentialWallet.saveAll(credsWithIden3MTPProof);
 
+  console.log("================= create credential request =======================");
   const proofReqMtp: ZeroKnowledgeProofRequest = createNationalCardCredentialRequest();
+
+  console.log("================= use proof service to generate proof =======================");
   const { proof, pub_signals } = await proofService.generateProof(proofReqMtp, config.credential.userDID);
 
-  console.log("Proofs: ", JSON.stringify(proof), JSON.stringify(pub_signals));
   return { proof, pub_signals };
 };

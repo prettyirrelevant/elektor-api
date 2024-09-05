@@ -29,7 +29,7 @@ interface FetchLogsParams {
 type BigIntish = bigint | BigNumberish | string | number;
 
 const PROVIDER_URL = "https://rpc-amoy.polygon.technology";
-const ZK_ELECTION_CONTRACT_ADDRESS = "0xc9a1572b04Cc69D6d1231E7FCF0f81dC78b49A89";
+const ZK_ELECTION_CONTRACT_ADDRESS = "0xe6401710D65aD32763fF3DC4a862BE6241370e6e";
 
 export const initialiseDatabase = async (config: {
   databaseUrl: string;
@@ -135,7 +135,7 @@ async function fetchLogs(params: FetchLogsParams): Promise<Log[]> {
   const zkVoterCOntract = await getzkVoter();
   const untilBlock = params.toBlock === "latest" ? (await provider.getBlockNumber()) || 0 : params.toBlock;
   const filter = {
-    topics: [zkVoterCOntract.interface.getEvent("Register")!.topicHash],
+    topics: [zkVoterCOntract.interface.getEvent("Registered")!.topicHash],
     toBlock: "latest",
     fromBlock: 0, //change to from block
   };
@@ -175,15 +175,17 @@ export async function getLeaves(_zkVoter: Contract): Promise<any[]> {
   const params: FetchLogsParams = {
     abi: zkElectionAbi.abi,
     contractAddr: ZK_ELECTION_CONTRACT_ADDRESS,
-    eventName: "Register",
+    eventName: "Registered",
     topics: [],
     fromBlock: fromBlock,
     toBlock: "latest",
   };
 
-  const events = (await fetchLogs(params)).map((log) => contractIface.decodeEventLog("Deposit", log.data, log.topics));
+  const events = (await fetchLogs(params)).map((log) =>
+    contractIface.decodeEventLog("Registered", log.data, log.topics),
+  );
   console.log(events);
-  const leaves = events.sort((a, b) => a.leafIndex.sub(b.leafIndex).toNumber()).map((e) => e.commitment);
+  const leaves = events.sort((a, b) => Number(a[1]) - Number(b[1])).map((e) => e[0]);
 
   return leaves;
 }
@@ -195,11 +197,12 @@ export async function getSolidityCallData(
 ): Promise<[string[], string[][], string[], string[]]> {
   const poseidon = await buildPoseidon();
   const F = poseidon.F;
-  const treeDepth = 25;
+  const treeDepth = 3;
   const commitment = F.toObject(poseidon([secret, nullifier]));
   const nullifierHash = F.toObject(poseidon([nullifier]));
   const tree = new IMT(poseidon, treeDepth, BigInt(0), 2);
   const leafs = await getLeaves(zkVoter);
+  console.log(leafs);
 
   leafs.forEach((leaf) => {
     tree.insert(BigInt(leaf.toString()));
@@ -211,6 +214,10 @@ export async function getSolidityCallData(
     return convert(F, sibling);
   });
 
+  const chainRoot1 = await zkVoter.getRoot();
+  const chainRoot2 = await zkVoter.roots(1);
+  const chainRoot3 = await zkVoter.roots(2);
+
   const Input = {
     nullifier: nullifier.toString(),
     secret: secret.toString(),
@@ -219,6 +226,8 @@ export async function getSolidityCallData(
     root: convert(F, tree.root),
     nullifierHash: String(nullifierHash),
   };
+
+  console.log("roots", Input.root, chainRoot1, chainRoot2, chainRoot3);
 
   const VotingWasmPath = path.join(__dirname, "circuits", "voting", "Voting.wasm");
   const CircuitFinalZkeyPath = path.join(__dirname, "circuits", "voting", "circuit_final.zkey");
@@ -238,7 +247,6 @@ export async function getSolidityCallData(
   ];
   const c = [argv[6], argv[7]];
   const input = argv.slice(8);
-  console.log(a, b, c, input);
   return [a, b, c, input];
 }
 
@@ -248,4 +256,16 @@ export async function vote(secret: number, nullifier: number, contestantId: numb
   const receipt = await zkvoter.vote(contestantId, a, b, c, input);
   const txHash = await receipt.wait();
   return txHash.transactionHash;
+}
+
+export function generateRandomEthereumTxId(): string {
+  const characters = "0123456789abcdef";
+  let txId = "0x";
+
+  for (let i = 0; i < 64; i++) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    txId += characters[randomIndex];
+  }
+
+  return txId;
 }
