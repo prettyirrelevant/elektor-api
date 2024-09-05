@@ -299,10 +299,7 @@ export const issueCredentialAndTransitState = async (config: {
   console.log("=============== user did ===============");
   console.log(config.credential.userDID.string());
 
-  // const { did: issuerDID1, credential: issuerCredential1 } = await initializeIssuer(identityWallet, config.options.database);
-  const { did: issuerDID, credential: issuerCredential } = await identityWallet.createIdentity({
-    ...DEFAULT_IDENTITY_CREATION_OPTIONS,
-  });
+  const { did: issuerDID, credential: issuerCredential } = await initializeIssuer(identityWallet, config.options.database);
 
   console.log("=============== issuerDID did ===============");
   console.log(issuerDID.string());
